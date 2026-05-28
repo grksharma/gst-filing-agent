@@ -55,6 +55,38 @@ npx expo start
 
 Then scan the QR code with the Expo Go app, or run on a simulator with `npm run android` / `npm run ios`.
 
+## Building for iOS and Android
+
+The same codebase ships to both platforms — no separate versions.
+
+**During development** (one server, choose platform at launch):
+
+```bash
+npx expo start     # press 'a' = Android, 'i' = iOS simulator, or scan QR on a phone
+```
+
+**Installable builds via EAS** (Expo's cloud build service):
+
+```bash
+npm install -g eas-cli
+eas login
+
+eas build --platform android --profile preview   # → installable APK
+eas build --platform ios     --profile preview    # → iOS simulator build
+eas build --platform ios     --profile preview-device  # → device build (needs Apple account)
+eas build --platform all     --profile preview    # → both at once
+```
+
+### Platform requirements
+
+| | Android | iOS |
+|---|---------|-----|
+| Dev on simulator/emulator | Android Studio emulator (any OS) | Xcode simulator (Mac only) |
+| Dev on physical device | Expo Go app, no account needed | Expo Go app, no account needed |
+| Installable build | APK installs directly, no account | Requires paid Apple Developer account ($99/yr) for device/TestFlight/App Store |
+
+Android distribution is unrestricted. iOS distribution to physical devices is gated by Apple — this is an Apple platform rule, not an app limitation. The `preview` iOS profile produces a **simulator** build you can test on a Mac without any paid account; the `preview-device` profile produces a signed build for real iPhones and needs your Apple credentials (EAS prompts for them and manages the certificates).
+
 ### Configuration
 
 Set these in `app.json` under `expo.extra`:
