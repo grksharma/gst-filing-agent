@@ -1,0 +1,57 @@
+{
+  "expo": {
+    "name": "GST Filing Agent",
+    "slug": "gst-filing-agent",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#1a73e8"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#1a73e8"
+      },
+      "package": "com.gstfilingagent.app",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.gstfilingagent.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to capture invoice photos for GST filing",
+        "NSPhotoLibraryUsageDescription": "Used to select invoice images"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ]
+    ],
+    "scheme": "gstfilingagent",
+    "extra": {
+      "GOOGLE_CLIENT_ID_ANDROID": "",
+      "GOOGLE_CLIENT_ID_IOS": "",
+      "GSTN_SANDBOX_URL": "https://api.gstsystem.in/sandbox",
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}
