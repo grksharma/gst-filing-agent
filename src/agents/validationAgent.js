@@ -213,7 +213,7 @@ function ok(field, value) { return { ok: true, field, value }; }
 function error(field, code, message) { return { ok: false, field, code, message }; }
 
 function parseIndianDate(str) {
-  const clean = str.replace(/[-\.]/g, '/');
+  const clean = str.replace(/[-.]/g, '/');
   const parts = clean.split('/');
   if (parts.length !== 3) return null;
   const [d, m, y] = parts.map(Number);

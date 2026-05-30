@@ -2,10 +2,10 @@
 // Drives the 7-agent pipeline. Shows live progress, handles the review gate,
 // and surfaces the final ARN. This is the heart of the user experience.
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, ScrollView, StyleSheet } from 'react-native';
-import { Text, Button, Card, ProgressBar, Chip, Divider, ActivityIndicator } from 'react-native-paper';
-import { runFilingPipeline, STAGES, onProgress } from '../agents/orchestrator';
+import { Text, Button, Card, ProgressBar, Chip, ActivityIndicator } from 'react-native-paper';
+import { runFilingPipeline, onProgress } from '../agents/orchestrator';
 import { useStore } from '../hooks/useStore';
 import ReviewSheet from '../components/ReviewSheet';
 import AuthDialog from '../components/AuthDialog';
@@ -25,10 +25,9 @@ const STAGE_LABELS = {
 const STAGE_ORDER = ['ONBOARDING', 'INTAKE', 'EXTRACTION', 'VALIDATION', 'COMPLIANCE', 'REVIEW', 'FILING', 'NOTIFICATION', 'COMPLETE'];
 
 export default function FilingScreen({ route, navigation }) {
-  const { documentSource } = route.params ?? {};
+  const { documentSource, nilFiling } = route.params ?? {};
   const profile = useStore(s => s.profile);
   const returnType = useStore(s => s.returnType);
-  const driveToken = useStore(s => s.driveToken);
   const setResult = useStore(s => s.setResult);
 
   const [currentStage, setCurrentStage] = useState(null);
@@ -40,6 +39,32 @@ export default function FilingScreen({ route, navigation }) {
   const reviewResolver = useRef(null);
   const authResolver = useRef(null);
 
+  const startPipeline = useCallback(async () => {
+    const result = await runFilingPipeline({
+      onboardingInput: null,
+      documentSource,
+      returnType,
+      nilFiling: nilFiling ?? false,
+      onUserReview: (data) => new Promise(resolve => {
+        setReviewData(data);
+        reviewResolver.current = resolve;
+      }),
+      onAuthRequired: () => new Promise(resolve => {
+        setAuthNeeded(true);
+        authResolver.current = resolve;
+      }),
+    });
+
+    if (result.ok) {
+      setResult({ arn: result.arn });
+      navigation.replace('Receipt');
+    } else if (result.needsEdit) {
+      // Re-open review with edits — handled by ReviewSheet
+    } else {
+      setError(result.error ?? result.lastError?.error);
+    }
+  }, [documentSource, nilFiling, returnType, navigation, setResult]);
+
   useEffect(() => {
     const unsub = onProgress(evt => {
       setCurrentStage(evt.stage);
@@ -48,33 +73,7 @@ export default function FilingScreen({ route, navigation }) {
     });
     startPipeline();
     return unsub;
-  }, []);
-
-  const startPipeline = async () => {
-    const result = await runFilingPipeline({
-      onboardingInput: null, // profile already saved
-      documentSource,
-      returnType,
-      driveToken,
-      onUserReview: (data) => new Promise(resolve => {
-        setReviewData(data);
-        reviewResolver.current = resolve;
-      }),
-      onAuthRequired: (gstin) => new Promise(resolve => {
-        setAuthNeeded(true);
-        authResolver.current = resolve;
-      }),
-    });
-
-    if (result.ok) {
-      setResult({ arn: result.arn, driveUrl: result.driveUrl });
-      navigation.replace('Receipt');
-    } else if (result.needsEdit) {
-      // Re-open review with edits — handled by ReviewSheet
-    } else {
-      setError(result.error ?? result.lastError?.error);
-    }
-  };
+  }, [startPipeline]);
 
   const handleReviewApprove = () => {
     setReviewData(null);
@@ -97,7 +96,9 @@ export default function FilingScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text variant="headlineSmall" style={styles.title}>Filing {returnType}</Text>
+        <Text variant="headlineSmall" style={styles.title}>
+          {nilFiling ? `Nil Return · ${returnType}` : `Filing ${returnType}`}
+        </Text>
         <ProgressBar progress={progress} style={styles.progressBar} />
 
         {STAGE_ORDER.map(stage => {

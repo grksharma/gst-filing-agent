@@ -4,7 +4,7 @@
 import { create } from 'zustand';
 import { STAGES } from '../agents/orchestrator';
 
-export const useStore = create((set, get) => ({
+export const useStore = create((set) => ({
   // Profile
   profile: null,
   setProfile: (profile) => set({ profile }),
@@ -38,13 +38,7 @@ export const useStore = create((set, get) => ({
 
   // Result
   arn: null,
-  driveUrl: null,
-  setResult: ({ arn, driveUrl }) => set({ arn, driveUrl }),
-
-  // Google Drive connection
-  driveConnected: false,
-  driveToken: null,
-  setDrive: (connected, token) => set({ driveConnected: connected, driveToken: token }),
+  setResult: ({ arn }) => set({ arn }),
 
   // Progress / errors
   progress: { stage: null, status: null, message: null },
@@ -53,7 +47,7 @@ export const useStore = create((set, get) => ({
   error: null,
   setError: (error) => set({ error }),
 
-  // Reset the whole filing flow (keeps profile + drive)
+  // Reset the whole filing flow (keeps profile)
   resetFlow: () => set({
     stage: STAGES.IDLE,
     files: [],

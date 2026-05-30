@@ -77,7 +77,7 @@ export function onProgress(fn) {
 }
 
 function emit(event) {
-  listeners.forEach(fn => { try { fn(event); } catch {} });
+  listeners.forEach(fn => { try { fn(event); } catch { /* ignore listener errors */ } });
 }
 
 // ─────────────────────────────────────────────
@@ -125,9 +125,9 @@ export async function runFilingPipeline({
   onboardingInput,
   documentSource = 'PICK',
   returnType = 'GSTR3B',
+  nilFiling = false,
   onUserReview,
   onAuthRequired,
-  driveToken = null,
 }) {
   let ctx = { stage: STAGES.IDLE };
 
@@ -137,34 +137,43 @@ export async function runFilingPipeline({
   }, ctx);
   if (ctx.stage === STAGES.ERROR) return ctx;
 
-  const { profile, filingContext, period } = ctx;
+  const { profile, period } = ctx;
   await saveFlowState(ctx);
 
-  // ── Agent 2: Document Intake ─────────────────────────────
-  ctx = await runStage(STAGES.INTAKE, async () => {
-    return runDocumentIntakeAgent(documentSource);
-  }, ctx);
-  if (ctx.stage === STAGES.ERROR) return ctx;
+  if (nilFiling) {
+    // Skip agents 2, 3, 4 — no documents, no invoices, empty records
+    emit({ stage: STAGES.INTAKE, status: 'done', result: { files: [] }, ctx });
+    emit({ stage: STAGES.EXTRACTION, status: 'done', result: { records: [] }, ctx });
+    emit({ stage: STAGES.VALIDATION, status: 'done', result: { validRecords: [], invalidRecords: [] }, ctx });
+    ctx = { ...ctx, files: [], records: [], validRecords: [], invalidRecords: [], needsReview: [], stage: STAGES.VALIDATION };
+    await saveFlowState(ctx);
+  } else {
+    // ── Agent 2: Document Intake ───────────────────────────
+    ctx = await runStage(STAGES.INTAKE, async () => {
+      return runDocumentIntakeAgent(documentSource);
+    }, ctx);
+    if (ctx.stage === STAGES.ERROR) return ctx;
 
-  const { files } = ctx;
-  await saveFlowState(ctx);
+    const { files } = ctx;
+    await saveFlowState(ctx);
 
-  // ── Agent 3: Extraction ──────────────────────────────────
-  ctx = await runStage(STAGES.EXTRACTION, async () => {
-    return runExtractionAgent(files);
-  }, ctx);
-  if (ctx.stage === STAGES.ERROR) return ctx;
+    // ── Agent 3: Extraction ────────────────────────────────
+    ctx = await runStage(STAGES.EXTRACTION, async () => {
+      return runExtractionAgent(files);
+    }, ctx);
+    if (ctx.stage === STAGES.ERROR) return ctx;
 
-  await saveFlowState(ctx);
+    await saveFlowState(ctx);
 
-  // ── Agent 4: Validation ──────────────────────────────────
-  const allExtracted = [...(ctx.records ?? []), ...(ctx.needsReview ?? [])];
-  ctx = await runStage(STAGES.VALIDATION, async () => {
-    return runValidationAgent(allExtracted);
-  }, ctx);
-  if (ctx.stage === STAGES.ERROR) return ctx;
+    // ── Agent 4: Validation ────────────────────────────────
+    const allExtracted = [...(ctx.records ?? []), ...(ctx.needsReview ?? [])];
+    ctx = await runStage(STAGES.VALIDATION, async () => {
+      return runValidationAgent(allExtracted);
+    }, ctx);
+    if (ctx.stage === STAGES.ERROR) return ctx;
 
-  await saveFlowState(ctx);
+    await saveFlowState(ctx);
+  }
 
   // ── Agent 5: Compliance ──────────────────────────────────
   ctx = await runStage(STAGES.COMPLIANCE, async (c) => {
@@ -180,26 +189,30 @@ export async function runFilingPipeline({
   await saveFlowState(ctx);
 
   // ── User Review Gate ─────────────────────────────────────
-  emit({ stage: STAGES.REVIEW, status: 'awaiting', ctx });
-  const reviewData = {
-    summary: ctx.summary,
-    advisories: ctx.advisories,
-    payload: ctx.payload,
-    warnings: ctx.warnings,
-    invalidRecords: ctx.invalidRecords,
-  };
-
-  const reviewResult = await onUserReview(reviewData);
-
-  if (!reviewResult.approved) {
-    // User wants to edit — return review data so UI can re-enter the validation loop
-    return {
-      ok: false,
-      stage: STAGES.REVIEW,
-      needsEdit: true,
-      editedRecords: reviewResult.edits,
-      ctx,
+  // Nil returns have nothing to review — auto-approve and proceed.
+  if (!nilFiling) {
+    emit({ stage: STAGES.REVIEW, status: 'awaiting', ctx });
+    const reviewData = {
+      summary: ctx.summary,
+      advisories: ctx.advisories,
+      payload: ctx.payload,
+      warnings: ctx.warnings,
+      invalidRecords: ctx.invalidRecords,
     };
+
+    const reviewResult = await onUserReview(reviewData);
+
+    if (!reviewResult.approved) {
+      return {
+        ok: false,
+        stage: STAGES.REVIEW,
+        needsEdit: true,
+        editedRecords: reviewResult.edits,
+        ctx,
+      };
+    }
+  } else {
+    emit({ stage: STAGES.REVIEW, status: 'done', ctx });
   }
 
   // ── Agent 6: Filing ──────────────────────────────────────
@@ -228,7 +241,6 @@ export async function runFilingPipeline({
       period,
       summary: c.summary,
       returnType,
-      driveAccessToken: driveToken,
     });
   }, ctx);
 
@@ -246,7 +258,12 @@ export async function runFilingPipeline({
 }
 
 async function preCheckAuth() {
-  const { SecureStore } = await import('expo-secure-store');
+  // Demo mode: no GSP credentials → no auth needed, filing agent will mock the ARN
+  const Constants = (await import('expo-constants')).default;
+  const appKey = Constants.expoConfig?.extra?.GSTN_APP_KEY;
+  if (!appKey || appKey === '') return { requiresAuth: false };
+
+  const SecureStore = await import('expo-secure-store');
   const token = await SecureStore.getItemAsync('gstn_auth_token').catch(() => null);
   const expiry = await SecureStore.getItemAsync('gstn_token_expiry').catch(() => null);
   const valid = token && expiry && Date.now() < parseInt(expiry);

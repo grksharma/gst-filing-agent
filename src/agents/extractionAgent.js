@@ -17,8 +17,8 @@ import {
 // ──────────────────────────────────────────
 const PATTERNS = {
   gstin: /\b([0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z])\b/g,
-  invoiceNo: /(?:invoice\s*(?:no|number|#|num)[.:]\s*)([A-Z0-9/\-]+)/gi,
-  invoiceDate: /(?:date[.:]\s*)(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/gi,
+  invoiceNo: /(?:invoice\s*(?:no|number|#|num)[.:]\s*)([A-Z0-9/-]+)/gi,
+  invoiceDate: /(?:date[.:]\s*)(\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4})/gi,
   taxableValue: /(?:taxable\s*(?:value|amount|base)[.:]\s*)(?:rs\.?\s*|₹\s*)?([0-9,]+\.?\d*)/gi,
   cgst: /(?:cgst\s*(?:@|at|rate)?[.:]\s*[\d.]+%?\s*)(?:rs\.?\s*|₹\s*)?([0-9,]+\.?\d*)/gi,
   sgst: /(?:sgst\s*(?:@|at|rate)?[.:]\s*[\d.]+%?\s*)(?:rs\.?\s*|₹\s*)?([0-9,]+\.?\d*)/gi,

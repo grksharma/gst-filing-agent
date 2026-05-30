@@ -3,7 +3,7 @@
 // Runs entirely on-device. No network except GSTIN lookup via GSTN public API.
 
 import * as SecureStore from 'expo-secure-store';
-import { GSTIN_REGEX, PAN_REGEX, STATE_CODES, TURNOVER_TIERS, FILING_TYPES } from '../constants/gst';
+import { GSTIN_REGEX, PAN_REGEX, STATE_CODES, TURNOVER_TIERS } from '../constants/gst';
 
 const PROFILE_KEY = 'gst_business_profile';
 
@@ -69,7 +69,7 @@ export function resolveFilingContext(profile) {
 
   let tier = 'MEDIUM';
   let frequency = 'monthly';
-  if (annualTurnover <= TURNOVER_TIERS.MICRO.max) {
+  if (annualTurnover === 0 || annualTurnover <= TURNOVER_TIERS.MICRO.max) {
     tier = 'MICRO';
     frequency = 'quarterly'; // QRMP scheme eligible
   } else if (annualTurnover <= TURNOVER_TIERS.SMALL.max) {
@@ -125,7 +125,7 @@ function validateProfile(profile) {
   const gstinResult = validateGSTIN(profile.gstin);
   if (!gstinResult.valid) errors.push(gstinResult.reason);
   if (!profile.tradeName?.trim()) errors.push('Trade name is required.');
-  if (!profile.annualTurnover || profile.annualTurnover < 0) errors.push('Annual turnover must be a positive number.');
+  if (profile.annualTurnover == null || profile.annualTurnover < 0) errors.push('Annual turnover cannot be negative.');
   if (!PAN_REGEX.test(profile.pan?.trim().toUpperCase())) errors.push('PAN format is invalid.');
   return { ok: errors.length === 0, errors };
 }

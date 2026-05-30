@@ -18,7 +18,7 @@ const ADVISORY_ICONS = {
 };
 
 export default function ReviewSheet({ data, onApprove, onEdit }) {
-  const { summary, advisories = [], invalidRecords = [], warnings = [] } = data;
+  const { summary, advisories = [], invalidRecords = [] } = data;
   const hasErrors = invalidRecords.length > 0;
 
   return (

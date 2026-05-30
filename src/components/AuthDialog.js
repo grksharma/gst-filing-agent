@@ -2,7 +2,6 @@
 // OTP authentication dialog. Triggered by Filing agent when no valid token exists.
 
 import React, { useState } from 'react';
-import { StyleSheet } from 'react-native';
 import { Portal, Dialog, TextInput, Button, Text, HelperText } from 'react-native-paper';
 import { requestOTP, authenticateWithOTP } from '../agents/filingAgent';
 import Constants from 'expo-constants';
@@ -48,7 +47,7 @@ export default function AuthDialog({ gstin, onComplete, onCancel }) {
         <Dialog.Content>
           {step === 'request' ? (
             <Text variant="bodyMedium">
-              We'll send an OTP to the mobile number registered with GSTIN {gstin}. This authorises filing.
+              {`We'll send an OTP to the mobile number registered with GSTIN ${gstin}. This authorises filing.`}
             </Text>
           ) : (
             <>
@@ -78,4 +77,3 @@ export default function AuthDialog({ gstin, onComplete, onCancel }) {
   );
 }
 
-const styles = StyleSheet.create({});

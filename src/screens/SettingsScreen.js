@@ -1,50 +1,14 @@
 // src/screens/SettingsScreen.js
 // Connect/disconnect Google Drive, view profile, reset app.
 
-import React, { useState } from 'react';
-import { View, ScrollView, StyleSheet, Alert } from 'react-native';
-import { Text, Card, Button, List, Divider } from 'react-native-paper';
-import Constants from 'expo-constants';
+import React from 'react';
+import { ScrollView, StyleSheet, Alert } from 'react-native';
+import { Text, Card, Button, List } from 'react-native-paper';
 import { useStore } from '../hooks/useStore';
 import { clearProfile } from '../agents/onboardingAgent';
-import {
-  buildAuthRequest,
-  exchangeCodeForTokens,
-  revokeGDriveAccess,
-  getValidAccessToken,
-} from '../services/googleDriveService';
 
 export default function SettingsScreen({ navigation }) {
   const profile = useStore(s => s.profile);
-  const driveConnected = useStore(s => s.driveConnected);
-  const setDrive = useStore(s => s.setDrive);
-  const [connecting, setConnecting] = useState(false);
-
-  const clientId = Constants.expoConfig?.extra?.GOOGLE_CLIENT_ID_ANDROID
-    ?? Constants.expoConfig?.extra?.GOOGLE_CLIENT_ID_IOS;
-
-  const connectDrive = async () => {
-    setConnecting(true);
-    try {
-      const { request, redirectUri, discovery } = buildAuthRequest(clientId);
-      const result = await request.promptAsync(discovery);
-      if (result.type === 'success' && result.params.code) {
-        const token = await exchangeCodeForTokens(result.params.code, redirectUri, clientId);
-        setDrive(true, token);
-        Alert.alert('Connected', 'Your filings will now be backed up to your Google Drive.');
-      }
-    } catch (err) {
-      Alert.alert('Connection failed', err.message);
-    } finally {
-      setConnecting(false);
-    }
-  };
-
-  const disconnectDrive = async () => {
-    await revokeGDriveAccess();
-    setDrive(false, null);
-    Alert.alert('Disconnected', 'Google Drive backup is now off. Local copies are kept on this device.');
-  };
 
   const resetApp = () => {
     Alert.alert(
@@ -67,18 +31,13 @@ export default function SettingsScreen({ navigation }) {
       <Text variant="headlineSmall" style={styles.title}>Settings</Text>
 
       <Card style={styles.card}>
-        <Card.Title title="Storage" subtitle="Where your receipts are saved" />
+        <Card.Title title="Receipts" subtitle="All filings are saved on this device" />
         <Card.Content>
           <List.Item
-            title="Google Drive"
-            description={driveConnected
-              ? 'Connected — receipts backed up automatically'
-              : 'Not connected — receipts saved on this device only'}
-            left={props => <List.Icon {...props} icon={driveConnected ? 'cloud-check' : 'cloud-off-outline'} />}
+            title="Share any receipt"
+            description="Open the receipt from your filing history and tap Share to send it to Drive, WhatsApp, email, or any app."
+            left={props => <List.Icon {...props} icon="share-variant" />}
           />
-          {driveConnected
-            ? <Button mode="outlined" onPress={disconnectDrive}>Disconnect</Button>
-            : <Button mode="contained" loading={connecting} onPress={connectDrive}>Connect Google Drive</Button>}
         </Card.Content>
       </Card>
 
